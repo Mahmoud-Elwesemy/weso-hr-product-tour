@@ -30,6 +30,8 @@
 <body>
   <div id="root"></div>
   <div id="layer"></div>
+  <!-- starts the icon font download while the password is typed, so the demo opens with its icons -->
+  <span class="material-symbols-rounded" aria-hidden="true" style="position:absolute;opacity:0;pointer-events:none">home</span>
   <div class="w-gate" id="w-gate" hidden>
     <form id="w-gate-form" autocomplete="off">
       <img src="assets/weso-logo.png" alt="Weso HR" id="w-gate-logo">
@@ -43,7 +45,7 @@
   </div>
   <script>
   (function () {
-    var KEY = 'weso-demo-key', ITER = 310000, BUILD = 'mvgzh5z8';
+    var KEY = 'weso-demo-key', ITER = 310000, BUILD = 'mvh0vtgq';
     var gate = document.getElementById('w-gate'), form = document.getElementById('w-gate-form'), pass = document.getElementById('w-gate-pass'),
         err = document.getElementById('w-gate-err'), go = document.getElementById('w-gate-go');
     if (matchMedia('(prefers-color-scheme: dark)').matches) document.getElementById('w-gate-logo').src = 'assets/weso-logo-dark.png';
