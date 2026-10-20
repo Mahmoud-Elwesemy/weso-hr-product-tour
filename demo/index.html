@@ -25,6 +25,10 @@
     .w-gate button[disabled] { opacity: .6; cursor: progress; }
     .w-gate .err { color: var(--g-danger); font-size: 13px; text-align: center; min-height: 18px; }
     .w-gate .en { direction: ltr; }
+    .w-gate .prog { display: grid; gap: 6px; font-size: 13px; color: var(--g-muted); text-align: center; }
+    .w-gate .prog[hidden] { display: none; }
+    .w-gate .bar { height: 6px; border-radius: 3px; background: var(--g-border); overflow: hidden; }
+    .w-gate .bar i { display: block; height: 100%; width: 0; background: var(--g-primary); transition: width .2s; }
   </style>
 </head>
 <body>
@@ -39,17 +43,36 @@
       <p>هذا العرض مخصص لمن تلقّى كلمة المرور.<br><span class="en">This demo is for invited viewers. Enter the password to open it.</span></p>
       <label for="w-gate-pass">كلمة المرور <span class="en">· Password</span></label>
       <input type="password" id="w-gate-pass" required autofocus>
+      <div class="prog" id="w-gate-prog" hidden><span>جارٍ تحميل العرض… <span class="en">· Loading the demo…</span> <b id="w-gate-pct"></b></span><div class="bar"><i id="w-gate-bar"></i></div></div>
       <div class="err" id="w-gate-err" role="alert"></div>
       <button type="submit" id="w-gate-go">فتح العرض <span class="en">· Open</span></button>
     </form>
   </div>
   <script>
   (function () {
-    var KEY = 'weso-demo-key', ITER = 310000, BUILD = 'mvh0vtgq';
+    var KEY = 'weso-demo-key', ITER = 310000, BUILD = 'mvh18fdb';
     var gate = document.getElementById('w-gate'), form = document.getElementById('w-gate-form'), pass = document.getElementById('w-gate-pass'),
         err = document.getElementById('w-gate-err'), go = document.getElementById('w-gate-go');
     if (matchMedia('(prefers-color-scheme: dark)').matches) document.getElementById('w-gate-logo').src = 'assets/weso-logo-dark.png';
-    var bin = fetch('app.bin?b=' + BUILD).then(function (r) { if (!r.ok) throw new Error('load'); return r.arrayBuffer(); }).then(function (b) { return new Uint8Array(b); });
+    // the encrypted demo starts downloading at once (while the password is typed); its progress shows once the viewer is waiting on it
+    var prog = document.getElementById('w-gate-prog'), bar = document.getElementById('w-gate-bar'), pct = document.getElementById('w-gate-pct'), done = false;
+    var bin = fetch('app.bin?b=' + BUILD).then(function (r) {
+      if (!r.ok) throw new Error('load');
+      var total = +r.headers.get('content-length') || 0, got = 0, parts = [];
+      if (!r.body || !r.body.getReader) return r.arrayBuffer().then(function (b) { return new Uint8Array(b); });
+      var rd = r.body.getReader();
+      function pump() {
+        return rd.read().then(function (x) {
+          if (x.done) { var u = new Uint8Array(got), o = 0; parts.forEach(function (p) { u.set(p, o); o += p.length; }); return u; }
+          parts.push(x.value); got += x.value.length;
+          if (total) { var v = Math.min(100, Math.round(got / total * 100)); bar.style.width = v + '%'; pct.textContent = v + '%'; }
+          return pump();
+        });
+      }
+      return pump();
+    });
+    var failed = false;
+    bin.then(function () { done = true; prog.hidden = true; }, function () { failed = true; });
     var b64 = function (u) { var s = ''; for (var i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return btoa(s); };
     var unb64 = function (s) { var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; };
     function store(raw) { try { sessionStorage.setItem(KEY, BUILD + ':' + b64(raw)); } catch (e) {} }
@@ -76,10 +99,10 @@
     var raw = stored();
     (raw ? open(raw) : Promise.reject()).catch(function () { gate.hidden = false; pass.focus(); });
     form.addEventListener('submit', function (e) {
-      e.preventDefault(); err.textContent = ''; go.disabled = true;
+      e.preventDefault(); err.textContent = ''; go.disabled = true; if (!done) prog.hidden = false;
       bin.then(function (u) { return derive(pass.value, u.slice(0, 16)); }).then(open).catch(function () {
-        go.disabled = false; pass.select();
-        err.textContent = 'كلمة المرور غير صحيحة. · Incorrect password.';
+        go.disabled = false; prog.hidden = true; pass.select();
+        err.textContent = failed ? 'تعذّر تحميل العرض. تحقق من الاتصال ثم أعد تحميل الصفحة. · The demo could not be loaded; check the connection and reload.' : 'كلمة المرور غير صحيحة. · Incorrect password.';
       });
     });
   })();
