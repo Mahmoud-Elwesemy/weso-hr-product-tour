@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-design="a" data-palette="a" data-font="a" data-shape="a" data-comp="a" data-nav="a" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <title>Weso HR — العرض التفاعلي</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="assets/weso-mark.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+  <style>
+    :root { --g-bg: #f4f6fa; --g-card: #ffffff; --g-text: #0f172a; --g-muted: #5b6577; --g-border: #dde3ec; --g-primary: #1d4ed8; --g-primary-text: #ffffff; --g-danger: #b42318; }
+    @media (prefers-color-scheme: dark) { :root { --g-bg: #0b1220; --g-card: #111a2c; --g-text: #e6ebf3; --g-muted: #9aa6b8; --g-border: #22304a; --g-primary: #4f7cff; --g-primary-text: #ffffff; --g-danger: #ff8a7a; } }
+    .w-gate { position: fixed; inset: 0; z-index: 99999; display: grid; place-items: center; padding: 16px; background: var(--g-bg); color: var(--g-text);
+      font-family: "Segoe UI", Tahoma, "Noto Sans Arabic", Arial, sans-serif; }
+    .w-gate form { width: min(420px, 100%); background: var(--g-card); border: 1px solid var(--g-border); border-radius: 16px; padding: 28px 24px; display: grid; gap: 14px; box-shadow: 0 10px 30px rgba(15, 23, 42, .08); }
+    .w-gate img { height: 44px; justify-self: center; }
+    .w-gate h1 { margin: 0; font-size: 20px; text-align: center; }
+    .w-gate p { margin: 0; color: var(--g-muted); font-size: 14px; text-align: center; line-height: 1.6; }
+    .w-gate label { font-size: 13px; font-weight: 600; }
+    .w-gate input { width: 100%; box-sizing: border-box; height: 44px; border-radius: 10px; border: 1px solid var(--g-border); background: transparent; color: inherit; padding: 0 12px; font-size: 15px; }
+    .w-gate input:focus { outline: 2px solid var(--g-primary); outline-offset: 1px; }
+    .w-gate button { height: 44px; border: 0; border-radius: 10px; background: var(--g-primary); color: var(--g-primary-text); font-size: 15px; font-weight: 600; cursor: pointer; }
+    .w-gate button[disabled] { opacity: .6; cursor: progress; }
+    .w-gate .err { color: var(--g-danger); font-size: 13px; text-align: center; min-height: 18px; }
+    .w-gate .en { direction: ltr; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <div id="layer"></div>
+  <div class="w-gate" id="w-gate" hidden>
+    <form id="w-gate-form" autocomplete="off">
+      <img src="assets/weso-logo.png" alt="Weso HR" id="w-gate-logo">
+      <h1>العرض التفاعلي لنظام Weso HR</h1>
+      <p>هذا العرض مخصص لمن تلقّى كلمة المرور.<br><span class="en">This demo is for invited viewers. Enter the password to open it.</span></p>
+      <label for="w-gate-pass">كلمة المرور <span class="en">· Password</span></label>
+      <input type="password" id="w-gate-pass" required autofocus>
+      <div class="err" id="w-gate-err" role="alert"></div>
+      <button type="submit" id="w-gate-go">فتح العرض <span class="en">· Open</span></button>
+    </form>
+  </div>
+  <script>
+  (function () {
+    var KEY = 'weso-demo-key', ITER = 310000, BUILD = 'mvgzh5z8';
+    var gate = document.getElementById('w-gate'), form = document.getElementById('w-gate-form'), pass = document.getElementById('w-gate-pass'),
+        err = document.getElementById('w-gate-err'), go = document.getElementById('w-gate-go');
+    if (matchMedia('(prefers-color-scheme: dark)').matches) document.getElementById('w-gate-logo').src = 'assets/weso-logo-dark.png';
+    var bin = fetch('app.bin?b=' + BUILD).then(function (r) { if (!r.ok) throw new Error('load'); return r.arrayBuffer(); }).then(function (b) { return new Uint8Array(b); });
+    var b64 = function (u) { var s = ''; for (var i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return btoa(s); };
+    var unb64 = function (s) { var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; };
+    function store(raw) { try { sessionStorage.setItem(KEY, BUILD + ':' + b64(raw)); } catch (e) {} }
+    function stored() { try { var v = sessionStorage.getItem(KEY) || ''; return v.indexOf(BUILD + ':') === 0 ? unb64(v.slice(BUILD.length + 1)) : null; } catch (e) { return null; } }
+    function derive(password, salt) {
+      return crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits'])
+        .then(function (k) { return crypto.subtle.deriveBits({ name: 'PBKDF2', salt: salt, iterations: ITER, hash: 'SHA-256' }, k, 256); })
+        .then(function (b) { return new Uint8Array(b); });
+    }
+    function open(raw) {
+      return bin.then(function (u) {
+        return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt'])
+          .then(function (k) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: u.slice(16, 28) }, k, u.slice(28)); });
+      }).then(function (plain) {
+        var s = new Blob([plain]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+        return new Response(s).text();
+      }).then(function (txt) {
+        var app = JSON.parse(txt);
+        app.css.forEach(function (c) { var st = document.createElement('style'); st.textContent = c; document.head.appendChild(st); });
+        app.js.forEach(function (f) { var sc = document.createElement('script'); sc.textContent = f[1] + '\n//# sourceURL=' + f[0]; document.body.appendChild(sc); });
+        gate.remove(); store(raw);
+      });
+    }
+    var raw = stored();
+    (raw ? open(raw) : Promise.reject()).catch(function () { gate.hidden = false; pass.focus(); });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault(); err.textContent = ''; go.disabled = true;
+      bin.then(function (u) { return derive(pass.value, u.slice(0, 16)); }).then(open).catch(function () {
+        go.disabled = false; pass.select();
+        err.textContent = 'كلمة المرور غير صحيحة. · Incorrect password.';
+      });
+    });
+  })();
+  </script>
+</body>
+</html>
